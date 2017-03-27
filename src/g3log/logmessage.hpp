@@ -19,6 +19,7 @@
 #include <sstream>
 #include <thread>
 #include <memory>
+#include <boost/any.hpp>
 
 namespace g3 {
 
@@ -56,6 +57,14 @@ namespace g3 {
       }
       std::string& write() const {
          return _message;
+      }
+
+      const boost::any & contents() const {
+         return _contents;
+      }
+      
+      boost::any & store() const {
+         return _contents;
       }
 
       std::string expression() const  {
@@ -96,8 +105,7 @@ namespace g3 {
       LEVELS _level;
       std::string _expression; // only with content for CHECK(...) calls
       mutable std::string _message;
-
-
+      mutable boost::any _contents;
 
       friend void swap(LogMessage& first, LogMessage& second) {
          using std::swap;
@@ -109,6 +117,7 @@ namespace g3 {
          swap(first._level, second._level);
          swap(first._expression, second._expression);
          swap(first._message, second._message);
+         swap(first._contents, second._contents);
       }
 
    };

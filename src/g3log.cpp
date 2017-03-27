@@ -156,6 +156,10 @@ namespace g3 {
 
       /** explicits copy of all input. This is makes it possibly to use g3log across dynamically loaded libraries
       * i.e. (dlopen + dlsym)  */
+      void saveMessage(LogMessagePtr message) {
+        pushMessageToLogger(message);
+      }
+
       void saveMessage(const char *entry, const char *file, int line, const char *function, const LEVELS &level,
                        const char *boolean_expression, int fatal_signal, const char *stack_trace) {
          LEVELS msgLevel {level};
@@ -189,8 +193,9 @@ namespace g3 {
             // message, flushed the crash message to the sinks and exits with the same fatal signal
             //..... OR it's in unit-test mode then we throw a std::runtime_error (and never hit sleep)
             fatalCall(fatal_message);
-         } else {
-            pushMessageToLogger(message);
+         }
+         else {
+             saveMessage(message);
          }
       }
 

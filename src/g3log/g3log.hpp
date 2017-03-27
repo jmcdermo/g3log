@@ -93,6 +93,8 @@ namespace g3 {
       /// @returns true if logger is initialized
       bool isLoggingInitialized();
 
+      // can bypass the fatal tests if we're using a different type of LogMessage like the KeyValuePair
+      void saveMessage(LogMessagePtr message);
       // Save the created LogMessage to any existing sinks
       void saveMessage(const char *message, const char *file, int line, const char *function, const LEVELS &level,
                        const char *boolean_expression, int fatal_signal, const char *stack_trace);

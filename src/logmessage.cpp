@@ -27,8 +27,16 @@ namespace g3 {
    // helper for setting the normal log details in an entry
    std::string LogDetailsToString(const LogMessage& msg) {
       std::string out;
-      out.append(msg.timestamp() + "\t"
-                 + msg.level() + " [" + msg.file() + "->" + msg.function() + ":" + msg.line() + "]\t");
+      out.append("\n" + msg.timestamp() + "\t"
+                 + msg.level() + " [" + msg.threadID() + "]\t");
+      return out;
+   }
+
+   // helper for setting the normal log details in an entry
+   std::string LogFullDetailsToString(const LogMessage& msg) {
+      std::string out;
+      out.append("\n" + msg.timestamp() + "\t"
+                 + msg.level() +  " ["  + msg.threadID() + "] [" + msg.file() + "->" + msg.function() + ":" + msg.line() + "]\t");
       return out;
    }
 
@@ -153,7 +161,8 @@ namespace g3 {
       , _function(other._function)
       , _level(other._level)
       , _expression(other._expression)
-      , _message(other._message) {
+      , _message(other._message) 
+      , _contents(other._contents) {
    }
 
    LogMessage::LogMessage(LogMessage &&other)
@@ -165,7 +174,8 @@ namespace g3 {
       , _function(std::move(other._function))
       , _level(other._level)
       , _expression(std::move(other._expression))
-      , _message(std::move(other._message)) {
+      , _message(std::move(other._message))
+      , _contents(std::move(other._contents)) {
    }
 
 
