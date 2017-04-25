@@ -44,7 +44,7 @@ namespace g3 {
    // helper for normal
    std::string normalToString(const LogMessage& msg) {
       auto out = LogDetailsToString(msg);
-      out.append(msg.message() + '\n');
+      out.append(msg.message());
       return out;
    }
 
