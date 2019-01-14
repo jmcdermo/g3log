@@ -9,15 +9,18 @@
 #include "g3log/filesink.hpp"
 #include "filesinkhelper.ipp"
 #include <cassert>
+#include <chrono>
 
 namespace g3 {
    using namespace internal;
 
-
    FileSink::FileSink(const std::string &log_prefix, const std::string &log_directory, const std::string& logger_id)
-      : _log_file_with_path(log_directory)
+      : _log_details_func(&LogMessage::DefaultLogDetailsToString)
+      ,_log_file_with_path(log_directory)
       , _log_prefix_backup(log_prefix)
       , _outptr(new std::ofstream)
+      , _header("\t\tLOG format: [YYYY/MM/DD hh:mm:ss uuu* LEVEL FILE->FUNCTION:LINE] messagen\n\t\t(uuu*: microseconds fractions of the seconds value)\n\n")
+      , _firstEntry(true)
    {
       _log_prefix_backup = prefixSanityFix(log_prefix);
       if (!isValidFilename(_log_prefix_backup)) {
@@ -35,28 +38,34 @@ namespace g3 {
          _outptr = createLogFile(_log_file_with_path);
       }
       assert(_outptr && "cannot open log file at startup");
-      addLogFileHeader();
+      
    }
 
 
    FileSink::~FileSink() {
       std::string exit_msg {"g3log g3FileSink shutdown at: "};
-      exit_msg.append(localtime_formatted(systemtime_now(), internal::time_formatted)).append({"\n"});
+      auto now = std::chrono::system_clock::now();
+      exit_msg.append(localtime_formatted(now, internal::time_formatted)).append("\n");
       filestream() << exit_msg << std::flush;
 
-      exit_msg.append({"Log file at: ["}).append(_log_file_with_path).append({"]\n"});
+      exit_msg.append("Log file at: [").append(_log_file_with_path).append("]\n");
       std::cerr << exit_msg << std::flush;
    }
 
    // The actual log receiving function
    void FileSink::fileWrite(LogMessageMover message) {
+      if (_firstEntry ) {
+          addLogFileHeader();
+         _firstEntry = false;
+      }
+
       std::ofstream &out(filestream());
-      out << message.get().toString() << std::flush;
+      out << message.get().toString(_log_details_func) << std::flush;
    }
 
    std::string FileSink::changeLogFile(const std::string &directory, const std::string &logger_id) {
 
-      auto now = g3::systemtime_now();
+      auto now = std::chrono::system_clock::now();
       auto now_formatted = g3::localtime_formatted(now, {internal::date_formatted + " " + internal::time_formatted});
 
       std::string file_name = createLogFileName(_log_prefix_backup, logger_id);
@@ -78,15 +87,24 @@ namespace g3 {
       _log_file_with_path = prospect_log;
       _outptr = std::move(log_stream);
       ss_change << "\n\tNew log file. The previous log file was at: ";
-      ss_change << old_log;
+      ss_change << old_log << "\n";
       filestream() << now_formatted << ss_change.str();
       return _log_file_with_path;
    }
    std::string FileSink::fileName() {
       return _log_file_with_path;
    }
-   void FileSink::addLogFileHeader() {
-      filestream() << header();
+
+   void FileSink::overrideLogDetails(LogMessage::LogDetailsFunc func) {
+      _log_details_func = func;
    }
 
+   void FileSink::overrideLogHeader(const std::string& change) {
+      _header = change;
+   }
+
+
+   void FileSink::addLogFileHeader() {
+      filestream() << header(_header);
+   }
 } // g3

@@ -9,7 +9,6 @@
 
 #include <g3log/g3log.hpp>
 #include <g3log/logworker.hpp>
-#include <g3log/std2_make_unique.hpp>
 #include <g3log/logmessage.hpp>
 
 #include "testing_helpers.h"
@@ -111,7 +110,7 @@ namespace testing_helpers {
    }
 
    RestoreFileLogger::RestoreFileLogger(std::string directory)
-   : _scope(new ScopedLogger), _handle(_scope->get()->addSink(std2::make_unique<g3::FileSink>("UNIT_TEST_LOGGER", directory), &g3::FileSink::fileWrite)) {
+   : _scope(new ScopedLogger), _handle(_scope->get()->addSink(std::make_unique<g3::FileSink>("UNIT_TEST_LOGGER", directory), &g3::FileSink::fileWrite)) {
       using namespace g3;
       g3::initializeLogging(_scope->_currentWorker.get());
       clearMockFatal();
@@ -122,10 +121,10 @@ namespace testing_helpers {
       _log_file = filename.get();
 
 #ifdef G3_DYNAMIC_LOGGING
-      g3::only_change_at_initialization::setLogLevel(INFO, true);
-      g3::only_change_at_initialization::setLogLevel(DEBUG, true);
-      g3::only_change_at_initialization::setLogLevel(WARNING, true);
-      g3::only_change_at_initialization::setLogLevel(FATAL, true);
+      g3::only_change_at_initialization::addLogLevel(INFO, true);
+      g3::only_change_at_initialization::addLogLevel(G3LOG_DEBUG, true);
+      g3::only_change_at_initialization::addLogLevel(WARNING, true);
+      g3::only_change_at_initialization::addLogLevel(FATAL, true);
 #endif
    }
 

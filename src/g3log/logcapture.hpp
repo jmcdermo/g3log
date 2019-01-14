@@ -9,7 +9,6 @@
 #pragma once
 
 #include "g3log/loglevels.hpp"
-#include "g3log/g3log.hpp"
 #include "g3log/crashhandler.hpp"
 
 #include <string>
@@ -41,29 +40,28 @@ struct LogCapture {
 
 
    // At destruction the message will be forwarded to the g3log worker.
-   // in case of dynamically (at runtime) loaded libraries the important thing to know is that
-   // all strings are copied so the original are not destroyed at the receiving end, only the copy
+   // In the case of dynamically (at runtime) loaded libraries, the important thing to know is that
+   // all strings are copied, so the original are not destroyed at the receiving end, only the copy
    virtual ~LogCapture();
 
 
 
 
-   // Use "-Wall" to generate warnings in case of illegal printf format.
-   //      Ref:  http://www.unixwiz.net/techtips/gnu-c-attributes.html
-#ifndef __GNUC__
-#define  __attribute__(x) // Disable 'attributes' if compiler does not support 'em
-#endif 
 #ifdef _MSC_VER 
 #	if _MSC_VER >= 1400
 #		define G3LOG_FORMAT_STRING _Printf_format_string_
 #	else
 #		define G3LOG_FORMAT_STRING __format_string
 #	endif
+   
+    void capturef(G3LOG_FORMAT_STRING const char *printf_like_message, ...);
 #else
 #	define G3LOG_FORMAT_STRING
-#endif
-   void capturef(G3LOG_FORMAT_STRING const char *printf_like_message, ...) __attribute__((format(printf, 2, 3))); // 2,3 ref:  http://www.codemaestro.com/reviews/18
 
+   // Use "-Wall" to generate warnings in case of illegal printf format.
+   //      Ref:  http://www.unixwiz.net/techtips/gnu-c-attributes.html
+   [[gnu::format(printf, 2, 3)]] void capturef(G3LOG_FORMAT_STRING const char *printf_like_message, ...); // 2,3 ref:  http://www.codemaestro.com/reviews/18
+#endif
 
    /// prettifying API for this completely open struct
    std::ostringstream &stream() {
@@ -74,11 +72,11 @@ struct LogCapture {
 
    std::ostringstream _stream;
    std::string _stack_trace;
-   const char *_file;
+   const char* _file;
    const int _line;
-   const char *_function;
+   const char* _function;
    const LEVELS &_level;
-   const char *_expression;
+   const char* _expression;
    const g3::SignalType _fatal_signal;
 
 };

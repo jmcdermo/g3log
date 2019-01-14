@@ -31,18 +31,24 @@ namespace g3 {
 
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
    typedef unsigned long SignalType;
-   ///  SIGFPE, SIGILL, and SIGSEGV handling must be installed per thread
+   /// SIGFPE, SIGILL, and SIGSEGV handling must be installed per thread
    /// on Windows. This is automatically done if you do at least one LOG(...) call
    /// you can also use this function call, per thread so make sure these three
    /// fatal signals are covered in your thread (even if you don't do a LOG(...) call
    void installSignalHandlerForThread();
 #else
    typedef int SignalType;
-
    /// Probably only needed for unit testing. Resets the signal handling back to default
    /// which might be needed in case it was previously overridden
    /// The default signals are: SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGTERM
    void restoreSignalHandlerToDefault();
+
+
+   std::string signalToStr(int signal_number);
+
+   // restore to whatever signal handler was used before signal handler installation 
+   void restoreSignalHandler(int signal_number);
+
 
    /// Overrides the existing signal handling for custom signals
    /// For example: usage of zcmq relies on its own signal handler for SIGTERM

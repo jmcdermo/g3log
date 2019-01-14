@@ -7,10 +7,15 @@
  * ============================================================================*/
 
 #include "g3log/logcapture.hpp"
+#include "g3log/g3log.hpp"
 #include "g3log/crashhandler.hpp"
 
+#ifdef G3_DYNAMIC_MAX_MESSAGE_SIZE
+#include <vector>
+#endif /* G3_DYNAMIC_MAX_MESSAGE_SIZE */
+
 // For Windows we need force a thread_local install per thread of three
-// signals that must have a signal handler instealled per thread-basis
+// signals that must have a signal handler installed per thread-basis
 // It is really a royal pain. Seriously Microsoft? Seriously?
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
 #define SIGNAL_HANDLER_VERIFY() g3::installSignalHandlerForThread()
@@ -19,7 +24,14 @@
 #define SIGNAL_HANDLER_VERIFY() do {} while(0)
 #endif
 
+#ifdef G3_DYNAMIC_MAX_MESSAGE_SIZE
+// MaxMessageSize is message limit used with vsnprintf/vsnprintf_s
+static int MaxMessageSize = 2048;
 
+void g3::only_change_at_initialization::setMaxMessageSize(size_t max_size) {
+   MaxMessageSize = max_size;
+ }
+#endif /* G3_DYNAMIC_MAX_MESSAGE_SIZE */
 
 /** logCapture is a simple struct for capturing log/fatal entries. At destruction the
 * captured message is forwarded to background worker.
@@ -48,7 +60,7 @@ LogCapture::LogCapture(const char *file, const int line, const char *function, c
    : _file(file), _line(line), _function(function), _level(level), _expression(expression), _fatal_signal(fatal_signal) {
 
    if (g3::internal::wasFatal(level)) {
-      _stack_trace = {"\n*******\tSTACKDUMP *******\n"};
+      _stack_trace = std::string{"\n*******\tSTACKDUMP *******\n"};
       _stack_trace.append(g3::internal::stackdump(dump));
    }
 }
@@ -60,23 +72,35 @@ LogCapture::LogCapture(const char *file, const int line, const char *function, c
 * See also for the attribute formatting ref:  http://www.codemaestro.com/reviews/18
 */
 void LogCapture::capturef(const char *printf_like_message, ...) {
-   static const int kMaxMessageSize = 2048;
    static const std::string kTruncatedWarningText = "[...truncated...]";
+#ifdef G3_DYNAMIC_MAX_MESSAGE_SIZE
+   std::vector<char> finished_message_backing(MaxMessageSize);
+   char *finished_message = finished_message_backing.data();
+   auto finished_message_len = MaxMessageSize;
+#else
+   static const int kMaxMessageSize = 2048;
    char finished_message[kMaxMessageSize];
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__) && !defined(__GNUC__))
+   auto finished_message_len = _countof(finished_message);
+#else
+   int finished_message_len = sizeof(finished_message);
+#endif
+#endif /* G3_DYNAMIC_MAX_MESSAGE_SIZE*/
+
    va_list arglist;
    va_start(arglist, printf_like_message);
 
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__) && !defined(__GNUC__))
-   const int nbrcharacters = vsnprintf_s(finished_message, _countof(finished_message), _TRUNCATE, printf_like_message, arglist);
+   const int nbrcharacters = vsnprintf_s(finished_message, finished_message_len, _TRUNCATE, printf_like_message, arglist);
 #else
-   const int nbrcharacters = vsnprintf(finished_message, sizeof (finished_message), printf_like_message, arglist);
+   const int nbrcharacters = vsnprintf(finished_message, finished_message_len, printf_like_message, arglist);
 #endif
    va_end(arglist);
 
    if (nbrcharacters <= 0) {
-      stream() << "\n\tERROR LOG MSG NOTIFICATION: Failure to parse successfully the message";
+      stream() << "\n\tERROR LOG MSG NOTIFICATION: Failure to successfully parse the message";
       stream() << '"' << printf_like_message << '"' << std::endl;
-   } else if (nbrcharacters > kMaxMessageSize) {
+   } else if (nbrcharacters > finished_message_len) {
       stream() << finished_message << kTruncatedWarningText;
    } else {
       stream() << finished_message;

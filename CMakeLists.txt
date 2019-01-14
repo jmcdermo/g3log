@@ -1,10 +1,10 @@
-# ==========================================================================
+# =============================================================================
 # 2010 by KjellKod.cc. This is PUBLIC DOMAIN to use at your own risk and comes
 # with no warranties. This code is yours to share, use and modify with no
 # strings attached and no restrictions or obligations.
 #
 # For more information see g3log/LICENSE or refer refer to http://unlicense.org
-# ============================================================================*/
+# ==============================================================================
 
 
 # Below are details for compiling on Windows and Linux
@@ -20,8 +20,15 @@
 #    cd build;
 # 3. cmake -DCMAKE_BUILD_TYPE=Release -G "Visual Studio XXX" ..
 #     (cmake -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 12")
-#    (XXX is the Visual Studio version you are running)
-# 4. msbuild g3log.sln /p:Configuration=Release
+#     MAKE SURE you check the CMake documentation so you are using
+#     the correct bit flags(64 bit etc). The "XXX" needs 
+#     tto be replaced for your specific build system, ref: cmake docs.
+# 
+#     (Example from Appveyor Ci: 
+#      https://github.com/KjellKod/g3log/blob/master/appveyor.yml
+#      cmake -G "Visual Studio 14 2015 Win64" -DADD_G3LOG_UNIT_TEST=ON ..)
+#
+#      4. msbuild g3log.sln /p:Configuration=Release
 #
 # Try to run an example, such as:
 # 5. Release\g3log-FATAL-contract.exe
@@ -48,19 +55,53 @@
 
 cmake_minimum_required (VERSION 3.1)
 ENABLE_LANGUAGE(CXX)
-set(CMAKE_BUILD_TYPE Release)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT (MSVC_IDE OR XCODE))
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type, one of: Release, Debug" FORCE)
+endif()
+
 
 project (g3log)
+
+message( STATUS "Build type: ${CMAKE_BUILD_TYPE}" )
+message( STATUS "Configuration types: ${CMAKE_CONFIGURATION_TYPES}" )
 
 # Detect 64 or 32 bit
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
    # 64-bit project
    SET(64_BIT_OS TRUE)
-     MESSAGE("A 64-bit OS detected")
+     message( STATUS "A 64-bit OS detected" )
  else()
    SET(64_BIT_OS FALSE)
-   MESSAGE("A 32-bit OS detected")
+   message( STATUS "A 32-bit OS detected" )
 endif()
+
+
+SET(MAJOR_VERSION 1)
+IF ( NOT VERSION )
+   IF ( "${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Windows" )
+      message("windows: Extracting git software version")
+      execute_process(COMMAND cmd /c "git rev-list --branches HEAD | find /v " " /c" OUTPUT_VARIABLE GIT_VERSION WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+   ELSE()
+      IF(UNIX OR ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+         message( STATUS "nix: Extracting git software version" )
+      ELSE()
+         message( STATUS "unknown platform: extracting git software version" )
+      ENDIF()
+      execute_process(COMMAND bash "-c" "git rev-list --branches HEAD | wc -l | tr -d ' ' | tr -d '\n'" OUTPUT_VARIABLE GIT_VERSION WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+   ENDIF()
+
+   SET(MINOR_VERSION 3)
+   math(EXPR VERSION-BASE ${GIT_VERSION}/255)
+   math(EXPR VERSION-REMAINDER ${GIT_VERSION}%255)
+   message( STATUS "git build version: ${GIT_VERSION}" )
+   message( STATUS "version base: ${VERSION-BASE}" )
+   message( STATUS "version remainder: ${VERSION-REMAINDER}" )
+   # SET(BUILD_NUMBER ${GIT_VERSION})
+   SET(BUILD_NUMBER ${VERSION-BASE})
+   SET(VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_NUMBER}-${VERSION-REMAINDER})
+ENDIF()
+message( STATUS "Software Version: ${VERSION}" )
 
 
 
@@ -70,6 +111,21 @@ endif()
    INCLUDE (${g3log_SOURCE_DIR}/Options.cmake)
 
 
+
+   # ============================================================================
+   # G3LOG iOS BUILD SUPPORT
+   # ============================================================================
+   INCLUDE (${g3log_SOURCE_DIR}/iOSBuild.cmake)
+
+   if(G3_IOS_LIB)
+      # G3_IOS_LIB is the pass used to generate all the other cmakefiles for the
+      # different architectures needed for the universal library. So we're done
+      # at here.
+      return()
+   endif()
+
+
+
    # =========================================================================
    # G3 Macro definitions in Options.cmake are written to file
    #    this avoids having to re-state your definitions in your source code
@@ -77,7 +133,7 @@ endif()
    #==========================================================================
    INCLUDE (${g3log_SOURCE_DIR}/GenerateMacroDefinitionsFile.cmake)
 
-   option (ADD_BUILD_WIN_SHARED  "Build shared library on Windows" OFF)
+
 
    # =========================================================================
    # G3LOG BUILD
@@ -111,31 +167,45 @@ endif()
 
 
 
-
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
    # ==========================================================================
-   # BETA : package manager for G3Log,. not yet reliable. Use at your own risk
-   #        only tested on Ubuntu and CentOS
-   #
-   #        For OSX you can install an older version using 'brew install'
+   #        Only tested on Ubuntu, CentOS and OSX.
+   #        For OSX you can also install an older version using 'brew install'
    #
    # ==========================================================================
-   #   Package handling is done AFTER all other CMake setup
-   #   usage:   make package
-   #   Check the output result and install accordingly.
+   #
+   #   Alternative 1:
+   #      Package handling is done AFTER all other CMake setup
+   #      usage:   make package
+   #      Check the output result and install accordingly.
+   #
+   #   Alternative 2:
+   #      usage: make; sudo make install
+   #
    # ==========================================================================
    INCLUDE (${g3log_SOURCE_DIR}/CPackLists.txt)
 ENDIF()
 
+IF(MINGW)
+   # ==========================================================================
+   #
+   #   usage: make; make install
+   #
+   # ==========================================================================
+   INCLUDE (${g3log_SOURCE_DIR}/CPackLists.txt)
+   
+   # this enables strerror_s
+   ADD_DEFINITIONS(-DMINGW_HAS_SECURE_API)
+ENDIF()
 
 IF (NOT MSVC)
-   MESSAGE("\n\n
+   message( STATUS "\n\n
       *******************************************************************
       Please do 'make clean-cmake' before next cmake generation.
          It is a good idea to purge your build directory of CMake
          generated cache files
       *******************************************************************
-       ")
+       " )
    add_custom_target(clean-cmake
       COMMAND ${CMAKE_COMMAND} -P ${g3log_SOURCE_DIR}/CleanAll.cmake
    )
