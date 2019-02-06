@@ -88,8 +88,10 @@ namespace g3 {
    std::string LogMessage::DefaultLogDetailsToString(const LogMessage& msg) {
       std::string out;
       out.append(msg.timestamp() + "\t"
-                 + msg.level() 
-                 + " [" 
+                 + msg.level()
+                 + " ["
+                 + msg.threadID()
+                 + "] ["
                  + msg.file() 
                  + "->" 
                  + msg.function() 
@@ -101,10 +103,10 @@ namespace g3 {
    std::string LogMessage::FullLogDetailsToString(const LogMessage& msg) {
       std::string out;
       out.append(msg.timestamp() + "\t"
-                 + msg.level() 
-                 + " [" 
-                 + msg.threadID() 
-                 + " "
+                 + msg.level()
+                 + " ["
+                 + msg.threadID()
+                 + "] ["
                  + msg.file() 
                  + "->"+ msg.function() 
                  + ":" + msg.line() + "]\t");
