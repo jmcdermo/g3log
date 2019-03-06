@@ -26,6 +26,9 @@
  * worker in case of dynamic loaded library reasons
 */
 struct LogCapture {
+    LogCapture(const LogCapture &) = delete;
+    LogCapture & operator=(const LogCapture &) = delete;
+
    /// Called from crash handler when a fatal signal has occurred (SIGSEGV etc)
    LogCapture(const LEVELS &level, g3::SignalType fatal_signal, const char *dump = nullptr);
 
