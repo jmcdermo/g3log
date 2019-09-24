@@ -17,7 +17,7 @@
 
 namespace g3 {
 
-   LogWorkerImpl::LogWorkerImpl() : _bg(kjellkod::Active::createActive()) { }
+    LogWorkerImpl::LogWorkerImpl(const std::vector<int32_t> & cpu_ids) : _bg(kjellkod::Active::createActive(cpu_ids)) { }
 
    void LogWorkerImpl::bgSave(g3::LogMessagePtr msgPtr) {
       std::unique_ptr<LogMessage> uniqueMsg(std::move(msgPtr.get()));
@@ -116,8 +116,12 @@ namespace g3 {
       token_done.wait();
    }
 
-   std::unique_ptr<LogWorker> LogWorker::createLogWorker() {
-      return std::unique_ptr<LogWorker>(new LogWorker);
+    std::unique_ptr<LogWorker> LogWorker::createLogWorker() {
+        return std::unique_ptr<LogWorker>(new LogWorker(std::vector<int32_t>()));
+    }
+
+    std::unique_ptr<LogWorker> LogWorker::createLogWorker(const std::vector<int32_t> & cpu_list) {
+      return std::unique_ptr<LogWorker>(new LogWorker(cpu_list));
    }
 
    std::unique_ptr<FileSinkHandle>LogWorker::addDefaultLogger(const std::string& log_prefix, const std::string& log_directory, const std::string& default_id) {

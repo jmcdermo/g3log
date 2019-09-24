@@ -24,6 +24,10 @@
 #include <memory>
 #include "g3log/shared_queue.hpp"
 
+#ifdef __linux__
+#include <iostream>
+#endif
+
 namespace kjellkod {
    typedef std::function<void() > Callback;
 
@@ -58,8 +62,26 @@ namespace kjellkod {
 
       /// Factory: safe construction of object before thread start
       static std::unique_ptr<Active> createActive() {
+          return createActive(std::vector<int32_t>());
+      }
+
+      static std::unique_ptr<Active> createActive(const std::vector<int32_t> & cpu_ids) {
          std::unique_ptr<Active> aPtr(new Active());
          aPtr->thd_ = std::thread(&Active::run, aPtr.get());
+         if (cpu_ids.size() > 0) {
+             cpu_set_t cpuset;
+             CPU_ZERO(&cpuset);
+
+             for (auto iter(cpu_ids.begin()); iter!=cpu_ids.end(); ++iter) {
+                 CPU_SET((*iter), &cpuset);
+             }
+
+#ifdef __linux__
+             if (pthread_setaffinity_np(aPtr->thd_.native_handle(), sizeof(cpu_set_t), &cpuset) != 0) {
+                 std::cerr << "Error setting cpu affinity." << std::endl;
+             }
+#endif
+         }
          return aPtr;
       }
    };

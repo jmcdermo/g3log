@@ -17,7 +17,6 @@
 #include "g3log/filesink.hpp"
 #include "g3log/logmessage.hpp"
 #include "g3log/std2_make_unique.hpp"
-#include <memory>
 
 #include <memory>
 #include <string>
@@ -36,6 +35,7 @@ namespace g3 {
       std::unique_ptr<kjellkod::Active> _bg; // do not change declaration order. _bg must be destroyed before sinks
 
       LogWorkerImpl();
+      LogWorkerImpl(const std::vector<int32_t> & cpu_ids);
       ~LogWorkerImpl() = default;
 
       void bgSave(g3::LogMessagePtr msgPtr);
@@ -52,7 +52,7 @@ namespace g3 {
    /// save( msg ) : internal use
    /// fatal ( fatal_msg ) : internal use
    class LogWorker final {
-      LogWorker() = default;
+      LogWorker(const std::vector<int32_t> & cpu_ids) : _impl(cpu_ids) {};
       void addWrappedSink(std::shared_ptr<g3::internal::SinkWrapper> wrapper);
 
       LogWorkerImpl _impl;
@@ -66,6 +66,7 @@ namespace g3 {
       /// Creates the LogWorker with no sinks. See exampel below on @ref addSink for how to use it
       /// if you want to use the default file logger then see below for @ref addDefaultLogger
       static std::unique_ptr<LogWorker> createLogWorker();
+      static std::unique_ptr<LogWorker> createLogWorker(const std::vector<int32_t> & cpu_list);
 
       
       /**
