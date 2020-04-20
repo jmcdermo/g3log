@@ -132,7 +132,9 @@ namespace g3 {
       int level = log_level.value;
       bool status = internal::g_log_levels[level].status.value();
       return status;
-#endif
+#else
+      (void)log_level;
       return true;
+#endif
    }
 } // g3
